@@ -1,13 +1,3 @@
-"""
-03_feedback_loop.py
-Simulates a feedback loop using the unsupervised anomaly detector.
-At each step:
- - score current state
- - get recommended actions
- - apply simulated process changes
-Stop when reading is back within the learned normal region.
-"""
-
 import json, random, subprocess, sys, pandas as pd
 
 GAINS = {"T": 0.5, "pH": 0.3, "RPM": 20.0}
@@ -35,6 +25,9 @@ def run_loop(start, max_steps=40):
     trace = []
     for step in range(max_steps):
         res = score_and_decide(x)
+        print(f"Step {step}: T={round(x[0],3)}, pH={round(x[1],3)}, RPM={round(x[2],3)} | "
+      f"Actions: heater={res['actions']['heater']}, ph={res['actions']['ph']}, stir={res['actions']['stir']} | "
+      f"Anomaly score={res['anomaly_score_mahal2']:.3f}, Normal={res['is_normal']}")
         trace.append({"step": step, **res})
         if res["is_normal"] and within_bands(res["delta"], res["bands"]):
             break

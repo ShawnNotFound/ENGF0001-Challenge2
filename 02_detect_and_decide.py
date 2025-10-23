@@ -1,12 +1,3 @@
-"""
-02_detect_and_decide.py
-Loads the unsupervised "normal model" and, given a reading (T,pH,RPM),
-returns:
- - anomaly score (Mahalanobis distance)
- - is_normal flag
- - recommended actions to bring back to normal
-"""
-
 import json, numpy as np, joblib, sys
 
 MODEL_PATH = "model_normal.pkl"

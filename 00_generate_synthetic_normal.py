@@ -1,11 +1,3 @@
-"""
-00_generate_synthetic_normal.py
-Generates near-optimal bioreactor data points ONLY (no control labels).
-Replace this with your real sensor data once you have it.
-
-Output: normal_data.csv with columns T, pH, RPM
-"""
-
 import random
 import pandas as pd
 

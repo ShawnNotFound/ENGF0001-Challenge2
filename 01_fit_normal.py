@@ -1,11 +1,3 @@
-"""
-01_fit_normal.py
-Learns the "normal region" from near-optimal datapoints (unsupervised).
-
-Input : normal_data.csv  (columns: T, pH, RPM)
-Output: model_normal.pkl (robust mean + covariance) and model_info.json
-"""
-
 import json, numpy as np, pandas as pd, joblib
 from pathlib import Path
 
