@@ -19,20 +19,14 @@ def score_and_decide(T, pH, RPM):
     x = np.array([T, pH, RPM], dtype=float)
     names = ["T", "pH", "RPM"]
 
-    if m.get("use_scaler", False):
-        mu = np.array(m["scaler_mean"])
-        sc = np.array(m["scaler_scale"])
-        z = (x - mu) / sc
-        cz = np.array(m["center_z"])
-        invC = np.array(m["inv_cov_z"])
-        d2 = float((z - cz).T @ invC @ (z - cz))
-        band = np.array(m["band_per_dim"])
-        center = mu + sc * cz
-    else:
-        center = np.array(m["center"])
-        invC = np.array(m["inv_cov"])
-        d2 = float((x - center).T @ invC @ (x - center))
-        band = np.array(m["band_per_dim"])
+    mu = np.array(m["scaler_mean"])
+    sc = np.array(m["scaler_scale"])
+    z = (x - mu) / sc
+    cz = np.array(m["center_z"])
+    invC = np.array(m["inv_cov_z"])
+    d2 = float((z - cz).T @ invC @ (z - cz))
+    band = np.array(m["band_per_dim"])
+    center = mu + sc * cz
 
     delta = x - center
 
