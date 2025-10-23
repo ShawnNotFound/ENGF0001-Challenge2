@@ -1,0 +1,4 @@
+Start_T,Start_pH,Start_RPM,End_T,End_pH,End_RPM,Converged,Steps
+44.0,6.6,180.0,37.67,7.185,298.559,True,13
+36.0,7.5,400.0,36.673,7.188,318.056,True,4
+37.2,7.25,312.0,37.2,7.25,312.0,True,0
