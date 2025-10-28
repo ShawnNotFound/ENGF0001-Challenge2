@@ -1,51 +1,66 @@
-import json, numpy as np, joblib, sys
+"""
+02_detect_and_decide.py
+Compares current readings (T, pH, RPM) against target setpoints.
+Outputs anomaly magnitude and recommended control actions.
+"""
 
-MODEL_PATH = "model_normal.pkl"
+import json, sys
 
-def load_model():
-    return joblib.load(MODEL_PATH)
+CONFIG_PATH = "target_config.json"
+
+def load_config():
+    with open(CONFIG_PATH, "r") as f:
+        return json.load(f)
 
 def score_and_decide(T, pH, RPM):
-    m = load_model()
-    x = np.array([T, pH, RPM], dtype=float)
-    names = ["T", "pH", "RPM"]
+    cfg = load_config()
+    sp = cfg["target"]
+    tol = cfg["tolerance"]
 
-    mu = np.array(m["scaler_mean"])
-    sc = np.array(m["scaler_scale"])
-    z = (x - mu) / sc
-    cz = np.array(m["center_z"])
-    invC = np.array(m["inv_cov_z"])
-    d2 = float((z - cz).T @ invC @ (z - cz))
-    band = np.array(m["band_per_dim"])
-    center = mu + sc * cz
-
-    delta = x - center
-
-    actions = {"heater": 0, "ph": 0, "stir": 0}
-    # Heater
-    if   delta[0] >  band[0]: actions["heater"] = -1
-    elif delta[0] < -band[0]: actions["heater"] = +1
-    # pH
-    if   delta[1] >  band[1]: actions["ph"] = +1
-    elif delta[1] < -band[1]: actions["ph"] = -1
-    # Stirring
-    if   delta[2] >  band[2]: actions["stir"] = -1
-    elif delta[2] < -band[2]: actions["stir"] = +1
-
-    return {
-        "reading": {"T": float(T), "pH": float(pH), "RPM": float(RPM)},
-        "center_estimate": {k: float(v) for k, v in zip(names, center)},
-        "delta": {k: float(v) for k, v in zip(names, delta)},
-        "anomaly_score_mahal2": d2,
-        "cutoff_mahal2": m["cutoff_mahal2"],
-        "is_normal": bool(d2 <= m["cutoff_mahal2"]),
-        "actions": actions,
-        "bands": {k: float(v) for k, v in zip(names, band)}
+    delta = {
+        "T": T - sp["T"],
+        "pH": pH - sp["pH"],
+        "RPM": RPM - sp["RPM"]
     }
+
+    # Compute normalized deviation (z-like score)
+    z = {
+        k: abs(delta[k]) / tol[k]
+        for k in delta
+    }
+
+    # Threshold: anything > 1.0 is considered outside acceptable range
+    is_normal = all(v <= 1.0 for v in z.values())
+
+    # Control logic (rule-based)
+    actions = {"heater": 0, "ph": 0, "stir": 0}
+
+    # Temperature
+    if delta["T"] > tol["T"]: actions["heater"] = -1  # too hot → cool
+    elif delta["T"] < -tol["T"]: actions["heater"] = +1  # too cold → heat
+
+    # pH
+    if delta["pH"] > tol["pH"]: actions["ph"] = +1    # too basic → add acid (lower pH)
+    elif delta["pH"] < -tol["pH"]: actions["ph"] = -1 # too acidic → add base (raise pH)
+
+    # Stirring
+    if delta["RPM"] > tol["RPM"]: actions["stir"] = -1  # too fast → slow down
+    elif delta["RPM"] < -tol["RPM"]: actions["stir"] = +1  # too slow → speed up
+
+    out = {
+        "reading": {"T": T, "pH": pH, "RPM": RPM},
+        "target": sp,
+        "delta": delta,
+        "z_score": z,
+        "is_normal": is_normal,
+        "actions": actions
+    }
+    return out
 
 if __name__ == "__main__":
     if len(sys.argv) == 4:
         T, pH, RPM = map(float, sys.argv[1:4])
         print(json.dumps(score_and_decide(T, pH, RPM), indent=2))
     else:
+        # Demo example
         print(json.dumps(score_and_decide(44.0, 6.6, 180.0), indent=2))
