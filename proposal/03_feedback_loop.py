@@ -5,9 +5,11 @@ Enhanced version:
 - Requires 3 consecutive anomaly detections before acting
 - Stops modifying once readings return to smaller stop region
 - Logs full feedback process step by step
+- Added Flask service for continuous control loop with /update and /status endpoints
 """
 
 import json, random, subprocess, sys, pandas as pd
+from flask import Flask, request, jsonify
 
 # ---- System gains and noise ----
 GAINS = {"T": 0.5, "pH": 0.3, "RPM": 20.0}
@@ -107,12 +109,59 @@ def run_loop(start, tolerance, max_steps=50):
 
     return {"start": start, "end": x, "trace": trace}
 
-if __name__ == "__main__":
-    # Load tolerance from config
-    with open("target_config.json", "r") as f:
-        cfg = json.load(f)
-    tolerance = cfg["tolerance"]
+# Load tolerance from config for service use
+with open("target_config.json", "r") as f:
+    TOLERANCE = json.load(f)["tolerance"]
 
+# Persistent state for the service
+_anomaly_count = 0
+_modifying = False
+
+app = Flask(__name__)
+
+@app.route("/update", methods=["POST"])
+def update():
+    global _anomaly_count, _modifying
+    data = request.get_json()
+    if not data or not all(k in data for k in ("T", "pH", "RPM")):
+        return jsonify({"error": "Missing T, pH, or RPM in request"}), 400
+
+    x = (float(data["T"]), float(data["pH"]), float(data["RPM"]))
+
+    res = score_and_decide(x)
+    delta = res["delta"]
+    a = res["actions"]
+
+    in_stop_band = in_band(delta, TOLERANCE, STOP_MULTIPLIER)
+    in_start_band = in_band(delta, TOLERANCE, START_MULTIPLIER)
+
+    # Update anomaly count and modifying state
+    if not in_start_band:
+        _anomaly_count += 1
+    else:
+        _anomaly_count = 0
+
+    if _anomaly_count >= ANOMALY_TRIGGER_COUNT:
+        _modifying = True
+
+    if in_stop_band:
+        _modifying = False
+        _anomaly_count = 0
+
+    response = {
+        "anomaly_count": _anomaly_count,
+        "modifying": _modifying,
+        "actions": a if _modifying else {"heater": 0, "ph": 0, "stir": 0},
+        "delta": delta
+    }
+    return jsonify(response)
+
+@app.route("/status", methods=["GET"])
+def status():
+    return jsonify({"status": "running", "anomaly_count": _anomaly_count, "modifying": _modifying})
+
+if __name__ == "__main__":
+    # If run directly, run the original local simulation
     scenarios = [
         (44.0, 6.6, 180.0),
         (36.0, 7.5, 400.0),
@@ -121,7 +170,7 @@ if __name__ == "__main__":
 
     summary = []
     for s in scenarios:
-        result = run_loop(s, tolerance)
+        result = run_loop(s, TOLERANCE)
         summary.append({
             "Start_T": round(s[0], 3),
             "Start_pH": round(s[1], 3),
