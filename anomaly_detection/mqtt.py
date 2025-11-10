@@ -105,8 +105,6 @@ def on_message(client, userdata, msg):
         }
         append_reading_to_csv(reading)
 
-        delta, modifying, actions = detect_anomaly(reading)
-
         # # print live state
         print(f"T={reading['T']:.2f}, pH={reading['pH']:.2f}, RPM={reading['RPM']:.1f} ")
     except Exception as e:
