@@ -4,7 +4,22 @@
     'pH': {'mean': 5.087092308187645, 'min': 5.0499421696176325, 'max': 5.131672474471665}, 
     'rpm': {'mean': 998.8741656429593, 'min': 982.2372835006909, 'max': 1012.3983431323386}, 
     'actuators_avg': {'heater_pwm': 0.46417625833063386, 'motor_pwm': 0.8501454093178992, 'acid_pwm': 0.0013705745058698695, 'base_pwm': 0.0}, 
-    'dosing_l': {'acid': 5.21722562653114e-05, 'base': 3.601490328187825e-05}, 'heater_energy_Wh': 0.01869275431827331, 'photoevents': 37, 
+    'dosing_l': {'acid': 5.21722562653114e-05, 'base': 3.601490328187825e-05}, 
+    'heater_energy_Wh': 0.01869275431827331, 
+    'photoevents': 37, 
+    'setpoints': {'temperature_C': 30.0, 'pH': 5.0, 'rpm': 1000.0}, 
+    'faults': {'last_active': [], 'counts': {}}
+}
+
+{
+    'window': {'start': 1762794540, 'end': 1762794541, 'seconds': 1, 'samples': 11}, 
+    'temperature_C': {'mean': 31.025387347197746, 'min': 30.89427683673756, 'max': 31.12699829589843}, 
+    'pH': {'mean': 8.655982286813932, 'min': 7.910502839508921, 'max': 8.972996802611409}, 
+    'rpm': {'mean': 1009.2499793648208, 'min': 982.3592138740019, 'max': 1024.7216675069067}, 
+    'actuators_avg': {'heater_pwm': 0.33721637081994743, 'motor_pwm': 0.8462089757134563, 'acid_pwm': 0.09377420090451592, 'base_pwm': 0.0}, 
+    'dosing_l': {'acid': 0.000241186759704831, 'base': 6.877408594722841e-05}, 
+    'heater_energy_Wh': 0.013038902672621647, 
+    'photoevents': 37, 
     'setpoints': {'temperature_C': 30.0, 'pH': 5.0, 'rpm': 1000.0}, 
     'faults': {'last_active': [], 'counts': {}}
 }
