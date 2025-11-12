@@ -37,14 +37,8 @@
     'faults': {'last_active': [{'name': 'ph_offset_bias', 'id': None}], 'counts': {'ph_offset_bias': 10}}
 }
 {
-    'window': {'start': 1762946277, 'end': 1762946278, 'seconds': 1, 'samples': 11}, 
     'temperature_C': {'mean': 35.75340600712146, 'min': 35.69237359229669, 'max': 35.791851975011355}, 
     'pH': {'mean': 5.126719122662331, 'min': 5.036320452141957, 'max': 5.18615934437436}, 
     'rpm': {'mean': 1004.8767318595386, 'min': 982.8916934932806, 'max': 1028.9479118533527}, 
-    'actuators_avg': {'heater_pwm': 0.5702308702563047, 'motor_pwm': 0.8447077467920058, 'acid_pwm': 0.003435094553213623, 'base_pwm': 0.0}, 
-    'dosing_l': {'acid': 6.0558789200346694e-05, 'base': 9.905313196279066e-06}, 
-    'heater_energy_Wh': 0.02249362485479258, 
-    'photoevents': 37, 
     'setpoints': {'temperature_C': 30.0, 'pH': 5.0, 'rpm': 1000.0}, 
-    'faults': {'last_active': [{'name': 'ph_offset_bias', 'id': None}], 'counts': {'ph_offset_bias': 11}}
 }

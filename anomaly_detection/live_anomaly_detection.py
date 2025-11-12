@@ -8,7 +8,9 @@ TOPIC = "bioreactor_sim/three_faults/telemetry/summary"
 # load learned tolerance model
 model = joblib.load("tolerance_model.pkl")
 Z_THRESHOLD = 3.0   # 3σ rule
+Z_LOW_THRESHOLD = 2.0  # reset anomaly counter below this
 TP = FP = TN = FN = 0
+temp_anomaly_count = ph_anomaly_count = stirring_anomaly_count = 0
 
 def zscore(delta, key):
     mu, sigma = model[key]["mean"], model[key]["std"]
@@ -32,7 +34,11 @@ def update_confusion(fault_present, anomaly_detected):
 def confusion_text():
     return f"Matrix → TP={TP}, FP={FP}, TN={TN}, FN={FN}"
 
+def call_alarm():
+    print("Anomaly Confirmed!")
+
 def on_message(client, userdata, msg):
+    global temp_anomaly_count, ph_anomaly_count, stirring_anomaly_count
     try:
         data = json.loads(msg.payload.decode())
         sp = data["setpoints"]
@@ -56,9 +62,25 @@ def on_message(client, userdata, msg):
 
         # check anomalies per variable
         anomalies = []
-        if abs(zT) > Z_THRESHOLD * 30: anomalies.append("Temperature")
-        if abs(zH) > Z_THRESHOLD: anomalies.append("pH")
-        if abs(zR) > Z_THRESHOLD: anomalies.append("Stirring speed")
+        if abs(zT) > Z_THRESHOLD: 
+            temp_anomaly_count += 1
+            anomalies.append("Temperature")
+        if abs(zH) > Z_THRESHOLD: 
+            ph_anomaly_count += 1
+            anomalies.append("pH")
+        if abs(zR) > Z_THRESHOLD: 
+            stirring_anomaly_count += 1
+            anomalies.append("Stirring speed")
+
+        if(temp_anomaly_count > 3 or ph_anomaly_count > 3 or stirring_anomaly_count > 3):
+            call_alarm()
+        
+        if abs(zT) <= Z_LOW_THRESHOLD:
+            temp_anomaly_count = 0
+        if abs(zH) <= Z_LOW_THRESHOLD:
+            ph_anomaly_count = 0
+        if abs(zR) <= Z_LOW_THRESHOLD:
+            stirring_anomaly_count = 0
 
         # global classification
         anomaly_detected = bool(anomalies)
