@@ -184,41 +184,42 @@
         <th colspan="1"><div class="heading">Volts</div></th>
       </tr>
       <tr>
-        <td><div class="bodytext">Analog pin 34</div></td>
+        <td><div class="bodytext">pH</div></td>
         <td><div class="tabledata" id = "b0"></div></td>
         <td><div class="tabledata" id = "v0"></div></td>
       </tr>
       <tr>
-        <td><div class="bodytext">Analog pin 35</div></td>
+        <td><div class="bodytext">Temperature</div></td>
         <td><div class="tabledata" id = "b1"></div></td>
         <td><div class="tabledata" id = "v1"></div></td>
       </tr>
         <tr>
-        <td><div class="bodytext">Digital switch</div></td>
-        <td><div class="tabledata" id = "switch"></div></td>
+        <td><div class="bodytext">Stirring</div></td>
+        <td><div class="tabledata" id = "b2"></div></td>
+        <td><div class="tabledata" id = "v2"></div></td>
       </tr>
       </table>
     </div>
     <br>
     <div class="category">Sensor Controls</div>
     <br>
-    <div class="bodytext">LED </div>
+    <div class="bodytext">pH </div>
     <button type="button" class = "btn" id = "btn0" onclick="ButtonPress0()">Toggle</button>
     </div>
     <br>
-    <div class="bodytext">Switch</div>
+    <div class="bodytext">Temperature</div>
     <button type="button" class = "btn" id = "btn1" onclick="ButtonPress1()">Toggle</button>
     </div>
     <br>
     <br>
-    <div class="bodytext">Fan Speed Control (RPM: <span id="fanrpm"></span>)</div>
+    <div class="bodytext">Stirring Control (RPM: <span id="fanrpm"></span>)</div>
     <br>
     <input type="range" class="fanrpmslider" min="0" max="255" value = "0" width = "0%" oninput="UpdateSlider(this.value)"/>
     <br>
     <br>
   </main>
 
-  <footer div class="foot" id = "temp" >ESP32 Web Page Creation and Data Update Demo</div></footer>
+  <footer div class="foot" id = "temp" >CS/EE Challenge 2 Group 30</div></footer>
   
   </body>
 
