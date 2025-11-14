@@ -1,0 +1,72 @@
+clear all
+close all
+% Given plant constants
+mc=80*4180; % Mass x specific heat capacity of water (J/K)
+torr=3600*4; % Cooling time-constant of cylinder tank (s)
+eta=mc/torr; % Heat loss factor to environment (W/K)
+Pheater=3000; % Heater power (W)
+% Set point/hysteresis
+TH=41; % Upper temperature threshold of bang-bang sensor (K)
+TL=39; % Lower temperature threshold of bang-bang sensor (K)
+deltat=0.1; % Simulation time step (s), (should be small!)
+Tsim=10801; % Simulation duration (s)
+T(1)=0; % Initial value of temperature change (zero!)
+for n=2:Tsim/deltat;
+ if T(n-1)>TH % Turn-off heater if temperature > TH
+ P=0;
+ end
+ if T(n-1)<TL
+ P=Pheater; % Turn-on heater if temperature < TL
+ end
+ T(n)=T(n-1)+(P-eta*T(n-1))*deltat/mc; % Plant response
+ HeaterPower(n)=P; % Heater power (either full-on or full-off)
+end
+t=(0:deltat:Tsim-deltat)/60; % Generate time axis
+% Plot result
+figure; yyaxis left
+plot(t,T,'LineWidth',2)
+axis([0,max(t),0,1.1*max(T)]); grid minor
+title('Bang-bang water cylinder heater simulation')
+xlabel('Time (mins)'); ylabel('Water temperature relative to ambient (K)')
+yyaxis right
+plot(t,HeaterPower/1000,'LineWidth',2)
+ylabel('Heater Power (kW)'); ylim([0,1.1*max(HeaterPower/1000)])
+set(gca,'fontsize',12)
+% Given plant constants
+mc=80*4180; % Mass x specific heat capacity (J/K)
+torr=3600*4; % Cooling time-constant of cylinder tank (s)
+eta=mc/torr; % Heat loss factor to environment (W/K)
+Pheater=3000; % Heater element rating (W)
+Tset=40; % Temperature set point
+% Desired loop parameters
+wn=1/(mc*Tset/Pheater) % Design natural frequency
+zeta=8 % Design damping factor
+% Required PI controller coefficients
+ki=mc*wn^2
+kp=2*zeta*mc*wn-eta
+deltat=0.1; % Simulation time step (should be small!)
+Tsim=10801; % Simulation duration (s)
+T(1)=0; % Initial value of temperature change (zero!)
+KIIntTe(1)=0; % Initial value of temperature error
+t(1)=0; % Initial time value (zero!)
+for n=2:Tsim/deltat;
+ Te(n)=Tset-T(n-1);
+ KIIntTe(n)=min(KIIntTe(n-1)+ki*Te(n-1)*deltat,Pheater); % Integrate Te and scale by ki
+ HeaterPower(n)=min(kp*Te(n)+KIIntTe(n),Pheater);% PI controller
+ T(n)=T(n-1)+(HeaterPower(n)-eta*T(n-1))*deltat/mc; % Plant response
+end
+t=(0:deltat:Tsim-deltat)/60; % Generate time axis
+% Plot result
+figure; yyaxis left
+plot(t,T,'LineWidth',2)
+title('PI controller water cylinder heater simulation')
+xlabel('Time (mins)')
+ylabel('Water temperature relative to ambient (K)')
+yyaxis right
+plot(t,HeaterPower/1000,'LineWidth',2)
+ylabel('Heater Power (kW)')
+grid minor
+axis([0,max(t),0,1.1*max(HeaterPower/1000)])
+set(gca,'fontsize',12)
+
+
