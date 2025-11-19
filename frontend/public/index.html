@@ -307,7 +307,8 @@
         <div class="charts">
           <div class="chart-toolbar">
             <span style="font-size:0.85rem;">View:</span>
-            <button type="button" data-range="5m" class="active">5 min</button>
+            <button type="button" data-range="1m" class="active">1 min</button>
+            <button type="button" data-range="5m">5 min</button>
             <button type="button" data-range="1h">1 h</button>
             <button type="button" data-range="24h">24 h</button>
             <button type="button" data-range="all">All</button>
@@ -509,6 +510,9 @@
         if (typeof lastPoint.temperature !== 'undefined') updateReading('temperature', lastPoint.temperature, ' °C', timeLabel);
         if (typeof lastPoint.ph !== 'undefined') updateReading('ph', lastPoint.ph, ' pH', timeLabel);
         if (typeof lastPoint.stirring_pwm !== 'undefined') updateReading('stirring_pwm', lastPoint.stirring_pwm, ' rpm', timeLabel);
+      // let last60 = filterHistoryByRange("1m");
+      // const labels60 = last60.map(p => new Date(p.ts).toLocaleTimeString());
+      // updateChart(oneMinChart, labels60, last60.map(p => p.temperature));
       }
     }
 
@@ -527,12 +531,34 @@
     }
 
     function filterHistoryByRange(range) {
-      if (range === 'all') return [...rawHistory.points];
-      const windows = { '5m': 5 * 60 * 1000, '1h': 60 * 60 * 1000, '24h': 24 * 60 * 60 * 1000 };
-      const windowMs = windows[range] ?? windows['5m'];
-      const cutoff = Date.now() - windowMs;
-      return rawHistory.points.filter(point => point.ts >= cutoff);
+    const now = Date.now();
+
+    // Time windows in ms
+    const windows = {
+      '1m': 60 * 1000,
+      '5m': 5 * 60 * 1000,
+      '1h': 60 * 60 * 1000,
+      '24h': 24 * 60 * 60 * 1000
+    };
+
+    // If "all", return everything (downsample later)
+    let pts = [...rawHistory.points];
+
+    if (range !== 'all') {
+      const cutoff = now - windows[range];
+      pts = pts.filter(p => p.ts >= cutoff);
     }
+
+    // --- UNIVERSAL rule: ALL charts show EXACTLY 60 points ---
+    const targetPts = 60;
+
+    if (pts.length <= targetPts) return pts;
+
+    const step = Math.floor(pts.length / targetPts);
+    return pts.filter((_, i) => i % step === 0).slice(-targetPts);
+  }
+
+
 
     function activateRangeButton(range) {
       document.querySelectorAll('.chart-toolbar button').forEach((button) => {
