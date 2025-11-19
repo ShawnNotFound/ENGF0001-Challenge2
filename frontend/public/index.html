@@ -141,16 +141,16 @@
     .charts {
       display: grid;
       grid-template-columns: 1fr;
+      grid-template-rows: auto repeat(3, minmax(120px, 1fr));
       gap: 10px;
-      grid-auto-rows: 1fr;
       height: 100%;
     }
     .chart-toolbar {
       display: flex;
       justify-content: flex-end;
+      align-items: center;
       gap: 6px;
       flex-wrap: wrap;
-      margin-bottom: 4px;
     }
     .chart-toolbar button {
       border: 1px solid #cbd5e1;
@@ -158,8 +158,9 @@
       color: #0f172a;
       padding: 4px 8px;
       border-radius: 4px;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       cursor: pointer;
+      min-width: 48px;
     }
     .chart-toolbar button.active {
       background: #0f172a;

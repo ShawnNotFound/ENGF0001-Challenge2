@@ -1,9 +1,12 @@
 # live_tolerance_detector.py
-import json, joblib, paho.mqtt.client as mqtt
+import json, joblib, paho.mqtt.client as mqtt, time
 
-BROKER = "engf0001.cs.ucl.ac.uk"
+# BROKER = "engf0001.cs.ucl.ac.uk"
+BROKER = "localhost"
 PORT = 1883
-TOPIC = "bioreactor_sim/three_faults/telemetry/summary"
+# TOPIC = "bioreactor_sim/three_faults/telemetry/summary"
+TOPIC = "bioreactor/anomaly"
+ALERT_TOPIC = "bioreactor/anomaly/status"
 
 # load learned tolerance model
 model = joblib.load("tolerance_model.pkl")
@@ -37,6 +40,30 @@ def confusion_text():
 def call_alarm():
     print("Anomaly Confirmed!")
 
+def severity_level(z):
+    val = abs(z)
+    if val > Z_THRESHOLD:
+        return 2  # critical / red
+    if val > Z_LOW_THRESHOLD:
+        return 1  # caution / yellow
+    return 0
+
+def publish_status(client, zT, zH, zR, delta_t, delta_h, delta_r, anomalies, confirmed):
+    payload = {
+        "timestamp": int(time.time() * 1000),
+        "temperature": {"z": zT, "delta": delta_t, "level": severity_level(zT)},
+        "ph": {"z": zH, "delta": delta_h, "level": severity_level(zH)},
+        "stirring_pwm": {"z": zR, "delta": delta_r, "level": severity_level(zR)},
+        "anomalies": anomalies,
+        "confirmed": confirmed
+    }
+    message = ", ".join(anomalies) if anomalies else "No anomalies"
+    payload["message"] = f"Status: {message}"
+    try:
+        client.publish(ALERT_TOPIC, json.dumps(payload), qos=0, retain=False)
+    except Exception as exc:
+        print("⚠️ Could not publish status:", exc)
+
 def on_message(client, userdata, msg):
     global temp_anomaly_count, ph_anomaly_count, stirring_anomaly_count
     try:
@@ -46,7 +73,7 @@ def on_message(client, userdata, msg):
         faults = data.get("faults", {}).get("last_active", [])
         fault_present = len(faults) > 0
         if fault_present:
-            print(f"⚠️  FAULTS ACTIVE: {faults} | ", end="")
+            print(f"⚠️⚠️  FAULTS ACTIVE: {faults} | ", end="")
         else:
             print("No faults | ", end="")
 
@@ -72,7 +99,8 @@ def on_message(client, userdata, msg):
             stirring_anomaly_count += 1
             anomalies.append("Stirring speed")
 
-        if(temp_anomaly_count > 3 or ph_anomaly_count > 3 or stirring_anomaly_count > 3):
+        confirmed = temp_anomaly_count > 3 or ph_anomaly_count > 3 or stirring_anomaly_count > 3
+        if confirmed:
             call_alarm()
         
         if abs(zT) <= Z_LOW_THRESHOLD:
@@ -92,6 +120,8 @@ def on_message(client, userdata, msg):
                   f"zT={zT:+.2f}, zH={zH:+.2f}, zR={zR:+.2f} | {confusion_text()}")
         else:
             print(f"OK | zT={zT:+.2f}, zH={zH:+.2f}, zR={zR:+.2f} | {confusion_text()}")
+
+        publish_status(client, zT, zH, zR, ΔT, ΔpH, ΔR, anomalies, confirmed)
 
     except Exception as e:
         print("❌ Error:", e)

@@ -1,0 +1,16 @@
+{
+  "name": "mqtt-dashboard",
+  "version": "1.0.0",
+  "description": "Simple UI and MQTT broker to monitor and control temperature, pH, and stirring PWM",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "NODE_ENV=development node server.js"
+  },
+  "dependencies": {
+    "aedes": "^0.51.2",
+    "express": "^4.19.2",
+    "mqtt": "^5.3.4",
+    "websocket-stream": "^5.5.2"
+  }
+}
