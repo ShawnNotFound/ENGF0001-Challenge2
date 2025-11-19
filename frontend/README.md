@@ -57,9 +57,10 @@ Other devices can connect either via `mqtt://localhost:1883` (TCP) or `ws://<hos
 
 The dashboard keeps a rolling history (up to one week) of incoming telemetry in `localStorage`. Use the buttons above the charts to switch between views:
 
-- `5 min` – last 5 minutes (default)
-- `1 h` – last hour
-- `24 h` – last day
+- `1 min` – 1s resolution
+- `5 min` – 5s resolution (default)
+- `1 h` – 1 min resolution
+- `24 h` – 24 min resolution
 - `All` – entire retained history
 
 Your selection persists per browser, so refreshing or reopening keeps the chosen window. Historical data stays local to your browser and is not sent back to the server.

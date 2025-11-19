@@ -306,9 +306,9 @@
         </div>
         <div class="charts">
           <div class="chart-toolbar">
-            <span style="font-size:0.85rem;">View:</span>
-            <button type="button" data-range="1m" class="active">1 min</button>
-            <button type="button" data-range="5m">5 min</button>
+            <span style="font-size:0.8rem;">View:</span>
+            <button type="button" data-range="1m">1 min</button>
+            <button type="button" data-range="5m" class="active">5 min</button>
             <button type="button" data-range="1h">1 h</button>
             <button type="button" data-range="24h">24 h</button>
             <button type="button" data-range="all">All</button>
@@ -398,7 +398,7 @@
         activateRangeButton(btn.dataset.range);
         currentRange = btn.dataset.range;
         saveRangePreference(currentRange);
-        renderFromHistory();
+        renderFromHistory(true);
       });
     });
 
@@ -406,6 +406,13 @@
     const CHART_STORAGE_KEY = 'bioreactorChartState_v3'; // retained for compatibility
     const RAW_HISTORY_KEY = 'bioreactorRawHistory_v1';
     const DEFAULT_RANGE = '5m';
+    const RANGE_CONFIG = {
+      '1m': { windowMs: 60 * 1000, updateMs: 1000 },
+      '5m': { windowMs: 5 * 60 * 1000, updateMs: 5000 },
+      '1h': { windowMs: 60 * 60 * 1000, updateMs: 60 * 1000 },
+      '24h': { windowMs: 24 * 60 * 60 * 1000, updateMs: 5 * 60 * 1000 },
+      'all': { windowMs: Infinity, bucketMs: 5 * 60 * 1000, updateMs: 5 * 60 * 1000 }
+    };
     let lastAlertSignature = '';
     const metricCards = {
       temperature: document.querySelector('[data-metric="temperature"]'),
@@ -418,7 +425,8 @@
     let currentRange = loadRangePreference() || DEFAULT_RANGE;
     activateRangeButton(currentRange);
     const rawHistory = loadRawHistory();
-    renderFromHistory();
+    const lastRenderByRange = {};
+    renderFromHistory(true);
 
     function makeLineChart(canvasId, label, color) {
       const ctx = document.getElementById(canvasId).getContext('2d');
@@ -496,7 +504,16 @@
       }
     }
 
-    function renderFromHistory() {
+    function renderFromHistory(force = false) {
+      if (!force) {
+        const config = RANGE_CONFIG[currentRange] || RANGE_CONFIG['5m'];
+        const now = Date.now();
+        const last = lastRenderByRange[currentRange] || 0;
+        if (now - last < (config.updateMs || 1000)) return;
+        lastRenderByRange[currentRange] = now;
+      } else {
+        lastRenderByRange[currentRange] = Date.now();
+      }
       const filtered = filterHistoryByRange(currentRange);
       const labels = filtered.map(point => new Date(point.ts).toLocaleTimeString());
 
@@ -531,34 +548,49 @@
     }
 
     function filterHistoryByRange(range) {
-    const now = Date.now();
-
-    // Time windows in ms
-    const windows = {
-      '1m': 60 * 1000,
-      '5m': 5 * 60 * 1000,
-      '1h': 60 * 60 * 1000,
-      '24h': 24 * 60 * 60 * 1000
-    };
-
-    // If "all", return everything (downsample later)
-    let pts = [...rawHistory.points];
-
-    if (range !== 'all') {
-      const cutoff = now - windows[range];
-      pts = pts.filter(p => p.ts >= cutoff);
+      const config = RANGE_CONFIG[range] || RANGE_CONFIG['5m'];
+      const basePoints = config.windowMs === Infinity
+        ? [...rawHistory.points]
+        : rawHistory.points.filter(point => point.ts >= Date.now() - config.windowMs);
+      const bucketMs = config.windowMs === Infinity
+        ? (config.bucketMs || 5 * 60 * 1000)
+        : Math.max(1000, Math.round((config.windowMs / MAX_POINTS) / 1000) * 1000);
+      return bucketizePoints(basePoints, bucketMs);
     }
 
-    // --- UNIVERSAL rule: ALL charts show EXACTLY 60 points ---
-    const targetPts = 60;
+    function bucketizePoints(points, bucketMs) {
+      if (!points.length || bucketMs <= 1000) return points;
+      const buckets = new Map();
+      points.forEach(point => {
+        const bucketKey = Math.floor(point.ts / bucketMs) * bucketMs;
+        let bucket = buckets.get(bucketKey);
+        if (!bucket) {
+          bucket = { ts: bucketKey, counts: { temperature: 0, ph: 0, stirring_pwm: 0 } };
+          buckets.set(bucketKey, bucket);
+        }
+        if (typeof point.temperature !== 'undefined') {
+          bucket.temperature = (bucket.temperature || 0) + point.temperature;
+          bucket.counts.temperature += 1;
+        }
+        if (typeof point.ph !== 'undefined') {
+          bucket.ph = (bucket.ph || 0) + point.ph;
+          bucket.counts.ph += 1;
+        }
+        if (typeof point.stirring_pwm !== 'undefined') {
+          bucket.stirring_pwm = (bucket.stirring_pwm || 0) + point.stirring_pwm;
+          bucket.counts.stirring_pwm += 1;
+        }
+      });
 
-    if (pts.length <= targetPts) return pts;
-
-    const step = Math.floor(pts.length / targetPts);
-    return pts.filter((_, i) => i % step === 0).slice(-targetPts);
-  }
-
-
+      return Array.from(buckets.values())
+        .sort((a, b) => a.ts - b.ts)
+        .map(bucket => ({
+          ts: bucket.ts,
+          temperature: bucket.counts.temperature ? +(bucket.temperature / bucket.counts.temperature).toFixed(3) : undefined,
+          ph: bucket.counts.ph ? +(bucket.ph / bucket.counts.ph).toFixed(3) : undefined,
+          stirring_pwm: bucket.counts.stirring_pwm ? +(bucket.stirring_pwm / bucket.counts.stirring_pwm).toFixed(3) : undefined
+        }));
+    }
 
     function activateRangeButton(range) {
       document.querySelectorAll('.chart-toolbar button').forEach((button) => {
