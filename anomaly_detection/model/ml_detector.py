@@ -9,6 +9,9 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score, accuracy_score
+import joblib
+import os
+from datetime import datetime
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -142,6 +145,63 @@ def evaluate_detector(detector, df_test, fault_type):
     }
 
 
+def save_models(detectors, metrics, save_dir='saved_models'):
+    """Save trained models and metrics to disk"""
+    # Create save directory if it doesn't exist
+    os.makedirs(save_dir, exist_ok=True)
+
+    # Generate timestamp for version control
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+
+    # Save each detector
+    for fault_type, detector in detectors.items():
+        model_path = os.path.join(save_dir, f'{fault_type}_detector.pkl')
+        joblib.dump(detector, model_path)
+        print(f"  Saved {fault_type} detector to {model_path}")
+
+    # Save metrics
+    metrics_path = os.path.join(save_dir, f'metrics_{timestamp}.pkl')
+    joblib.dump(metrics, metrics_path)
+    print(f"  Saved metrics to {metrics_path}")
+
+    # Save metadata
+    metadata = {
+        'timestamp': timestamp,
+        'fault_types': list(detectors.keys()),
+        'overall_metrics': {
+            'avg_f1': np.mean([metrics[ft]['F1'] for ft in detectors.keys()]),
+        }
+    }
+    metadata_path = os.path.join(save_dir, 'metadata.pkl')
+    joblib.dump(metadata, metadata_path)
+    print(f"  Saved metadata to {metadata_path}")
+
+    return save_dir
+
+
+def load_models(save_dir='saved_models'):
+    """Load trained models from disk"""
+    detectors = {}
+
+    # Load each detector
+    for fault_type in ['heater_power_loss', 'therm_voltage_bias', 'ph_offset_bias']:
+        model_path = os.path.join(save_dir, f'{fault_type}_detector.pkl')
+        if os.path.exists(model_path):
+            detectors[fault_type] = joblib.load(model_path)
+            print(f"  Loaded {fault_type} detector from {model_path}")
+        else:
+            print(f"  Warning: {model_path} not found")
+
+    # Load metadata
+    metadata_path = os.path.join(save_dir, 'metadata.pkl')
+    metadata = None
+    if os.path.exists(metadata_path):
+        metadata = joblib.load(metadata_path)
+        print(f"  Loaded metadata from {metadata_path}")
+
+    return detectors, metadata
+
+
 def main():
     print("="*70)
     print("MACHINE LEARNING DETECTOR - Random Forest")
@@ -250,6 +310,14 @@ def main():
     print("✓ Temporal features (diff, rolling mean/std)")
     print("✓ Interaction features (spreads, combinations)")
     print("✓ Can learn complex non-linear patterns")
+
+    # Save models
+    print("\n" + "="*70)
+    print("SAVING MODELS")
+    print("="*70)
+    save_dir = save_models(detectors, all_metrics)
+    print(f"\n✓ Models saved successfully to '{save_dir}/' directory")
+    print("  Use load_models() to reload them later")
 
     print("\n" + "="*70)
     print("Training complete! ML detectors ready.")
