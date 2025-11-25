@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bioreactor MQTT Dashboard</title>
+  <link rel="preconnect" href="https://unpkg.com" />
+  <style>
+    :root {
+      font-family: Arial, sans-serif;
+      color: #0f172a;
+    }
+    body {
+      margin: 0;
+      background: #f8fafc;
+    }
+    header {
+      background: #0f172a;
+      color: white;
+      padding: 6px 14px;
+    }
+    header h1 { margin: 0; font-size: clamp(15px, 2vw, 18px); }
+    main {
+      padding: 12px 16px;
+      display: grid;
+      gap: 12px;
+      grid-template-columns: minmax(0, 2.6fr) minmax(240px, 0.9fr);
+      align-items: start;
+      max-width: min(1280px, 98vw);
+      margin: 0 auto;
+    }
+    section {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+    }
+    h2 {
+      margin-top: 0;
+      font-size: 18px;
+    }
+    .board {
+      display: grid;
+      grid-template-columns: minmax(220px, 340px) minmax(0, 1fr);
+      gap: 12px;
+      align-items: stretch;
+    }
+    .board-left {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      height: 100%;
+    }
+    .metrics {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    .metric {
+      background: #0ea5e9;
+      color: white;
+      padding: 12px;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transition: background 0.25s ease, color 0.25s ease;
+    }
+    .metric-main {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .metric-target {
+      font-size: 0.85rem;
+      opacity: 0.85;
+    }
+    .metric small {
+      opacity: 0.8;
+    }
+    .metric.alert-caution {
+      background: #facc15;
+      color: #78350f;
+    }
+    .metric.alert-critical {
+      background: #dc2626;
+      color: #f8fafc;
+    }
+    form {
+      display: grid;
+      gap: 12px;
+    }
+    label {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+    }
+    input[type="number"] {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+    }
+    button {
+      background: #0f172a;
+      color: white;
+      border: none;
+      padding: 10px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #f97316;
+      animation: pulse 1.6s infinite;
+    }
+    .dot.ok {
+      background: #22c55e;
+    }
+    @keyframes pulse {
+      0% { transform: scale(0.9); opacity: 0.7; }
+      50% { transform: scale(1.1); opacity: 1; }
+      100% { transform: scale(0.9); opacity: 0.7; }
+    }
+    .charts {
+      display: grid;
+      grid-template-columns: 1fr;
+      grid-template-rows: auto repeat(3, minmax(120px, 1fr));
+      gap: 10px;
+      height: 100%;
+    }
+    .chart-toolbar {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .chart-toolbar button {
+      border: 1px solid #cbd5e1;
+      background: white;
+      color: #0f172a;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      min-width: 48px;
+    }
+    .chart-toolbar button.active {
+      background: #0f172a;
+      color: white;
+    }
+    .chart-card {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .chart-card canvas {
+      flex: 1;
+      width: 100%;
+      min-height: 120px;
+      height: clamp(120px, 22vh, 200px);
+    }
+    .alert-banner {
+      margin-top: 8px;
+      padding: 10px 14px;
+      border-left: 5px solid #f97316;
+      background: #fff7ed;
+      color: #7c2d12;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .alert-banner.hidden {
+      display: none;
+    }
+    .console-panel {
+      margin-top: 10px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 10px;
+      background: #f8fafc;
+    }
+    .console-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .console-filters {
+      display: flex;
+      gap: 12px;
+      font-size: 0.85rem;
+    }
+    .console-filters label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    #console-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      max-height: 180px;
+      overflow-y: auto;
+      font-size: 0.9rem;
+    }
+    .console-entry {
+      padding: 4px 0;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .console-entry:last-child {
+      border-bottom: none;
+    }
+    .console-entry time {
+      font-size: 0.75rem;
+      color: #475569;
+      margin-right: 8px;
+    }
+    section.side-panel {
+      max-width: 320px;
+      width: 100%;
+    }
+    @media (max-width: 960px) {
+      main { grid-template-columns: 1fr; }
+      .board { grid-template-columns: 1fr; }
+      .charts { grid-template-columns: 1fr; }
+      section.side-panel { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Bioreactor Control &amp; Telemetry (MQTT)</h1>
+  </header>
+  <main>
+    <section style="grid-column: 1;">
+      <div class="board">
+        <div>
+          <div class="board-left">
+            <div class="status">
+              <div id="broker-dot" class="dot" title="MQTT status"></div>
+              <span id="broker-status">Connecting to MQTT broker…</span>
+            </div>
+            <div id="alert-banner" class="alert-banner hidden">
+              <strong>Warning</strong>
+              <span id="alert-message">Anomaly detected.</span>
+            </div>
+            <div class="metrics">
+              <div class="metric" data-metric="temperature">
+                <div class="metric-main">
+                  <strong id="temp-value">-- °C</strong>
+                  <span class="metric-target">Target: <span id="temp-setpoint">30 °C</span></span>
+                </div>
+                <small>Temperature</small>
+                <small id="temp-time">--</small>
+              </div>
+              <div class="metric" data-metric="ph">
+                <div class="metric-main">
+                  <strong id="ph-value">-- pH</strong>
+                  <span class="metric-target">Target: <span id="ph-setpoint">5 pH</span></span>
+                </div>
+                <small>pH</small>
+                <small id="ph-time">--</small>
+              </div>
+              <div class="metric" data-metric="stirring_pwm">
+                <div class="metric-main">
+                  <strong id="stir-value">-- rpm</strong>
+                  <span class="metric-target">Target: <span id="stir-setpoint">1000 rpm</span></span>
+                </div>
+                <small>Stirring PWM</small>
+                <small id="stir-time">--</small>
+              </div>
+            </div>
+            <div class="console-panel">
+              <div class="console-header">
+                <strong>Console</strong>
+                <div class="console-filters">
+                  <label><input type="checkbox" data-filter="targets" checked /> Targets</label>
+                  <label><input type="checkbox" data-filter="alerts" checked /> Alerts</label>
+                  <label><input type="checkbox" data-filter="others" checked /> Others</label>
+                </div>
+              </div>
+              <ul id="console-list"></ul>
+            </div>
+          </div>
+        </div>
+        <div class="charts">
+          <div class="chart-toolbar">
+            <span style="font-size:0.8rem;">View:</span>
+            <button type="button" data-range="1m">1 min</button>
+            <button type="button" data-range="5m" class="active">5 min</button>
+            <button type="button" data-range="1h">1 h</button>
+            <button type="button" data-range="24h">24 h</button>
+            <button type="button" data-range="all">All</button>
+          </div>
+          <div class="chart-card">
+            <strong>Temperature</strong>
+            <canvas id="temp-chart"></canvas>
+          </div>
+          <div class="chart-card">
+            <strong>pH</strong>
+            <canvas id="ph-chart"></canvas>
+          </div>
+          <div class="chart-card">
+            <strong>Stirring PWM</strong>
+            <canvas id="stir-chart"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="side-panel" style="grid-column: 2;">
+      <h2>Set Targets</h2>
+      <p>Publish desired setpoints to the broker so controllers can react.</p>
+      <form id="targets-form">
+        <label>
+          Temperature (°C)
+          <input type="number" step="0.1" id="temp-target" name="temperature" value="30" />
+        </label>
+        <label>
+          pH
+          <input type="number" step="0.01" id="ph-target" name="ph" value="5" />
+        </label>
+        <label>
+          Stirring PWM
+          <input type="number" step="1" id="stir-target" name="stirring" value="1000" />
+        </label>
+        <button type="submit" id="submit-btn" disabled>Publish targets</button>
+      </form>
+      <p id="last-targets">No targets published yet.</p>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const statusEl = document.getElementById('broker-status');
+    const statusDot = document.getElementById('broker-dot');
+    const submitBtn = document.getElementById('submit-btn');
+    const lastTargets = document.getElementById('last-targets');
+    const alertBanner = document.getElementById('alert-banner');
+    const alertMessage = document.getElementById('alert-message');
+
+    const readings = {
+      temperature: { el: document.getElementById('temp-value'), time: document.getElementById('temp-time') },
+      ph: { el: document.getElementById('ph-value'), time: document.getElementById('ph-time') },
+      stirring_pwm: { el: document.getElementById('stir-value'), time: document.getElementById('stir-time') }
+    };
+    const targetEls = {
+      temperature: document.getElementById('temp-setpoint'),
+      ph: document.getElementById('ph-setpoint'),
+      stirring_pwm: document.getElementById('stir-setpoint')
+    };
+    const currentSetpoints = {
+      temperature: 30,
+      ph: 5,
+      stirring_pwm: 1000
+    };
+    currentSetpoints.temperature = parseFloat(document.getElementById('temp-target').value) || currentSetpoints.temperature;
+    currentSetpoints.ph = parseFloat(document.getElementById('ph-target').value) || currentSetpoints.ph;
+    currentSetpoints.stirring_pwm = parseFloat(document.getElementById('stir-target').value) || currentSetpoints.stirring_pwm;
+    Object.entries(currentSetpoints).forEach(([key, value]) => updateSetpointDisplay(key, value));
+
+    const consoleList = document.getElementById('console-list');
+    const consoleEntries = [];
+    const consoleFilters = { targets: true, alerts: true, others: true };
+    document.querySelectorAll('.console-filters input').forEach((checkbox) => {
+      const filter = checkbox.dataset.filter;
+      consoleFilters[filter] = checkbox.checked;
+      checkbox.addEventListener('change', (event) => {
+        consoleFilters[filter] = event.target.checked;
+        renderConsole();
+      });
+    });
+    renderConsole();
+    document.querySelectorAll('.chart-toolbar button').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        activateRangeButton(btn.dataset.range);
+        currentRange = btn.dataset.range;
+        saveRangePreference(currentRange);
+        renderFromHistory(true);
+      });
+    });
+
+    const MAX_POINTS = 60;
+    const CHART_STORAGE_KEY = 'bioreactorChartState_v3'; // retained for compatibility
+    const RAW_HISTORY_KEY = 'bioreactorRawHistory_v1';
+    const DEFAULT_RANGE = '5m';
+    const RANGE_CONFIG = {
+      '1m': { windowMs: 60 * 1000, updateMs: 1000 },
+      '5m': { windowMs: 5 * 60 * 1000, updateMs: 5000 },
+      '1h': { windowMs: 60 * 60 * 1000, updateMs: 60 * 1000 },
+      '24h': { windowMs: 24 * 60 * 60 * 1000, updateMs: 5 * 60 * 1000 },
+      'all': { windowMs: Infinity, bucketMs: 5 * 60 * 1000, updateMs: 5 * 60 * 1000 }
+    };
+    let lastAlertSignature = '';
+    const metricCards = {
+      temperature: document.querySelector('[data-metric="temperature"]'),
+      ph: document.querySelector('[data-metric="ph"]'),
+      stirring_pwm: document.querySelector('[data-metric="stirring_pwm"]')
+    };
+    const tempChart = makeLineChart('temp-chart', 'Temperature (°C)', '#ef4444');
+    const phChart = makeLineChart('ph-chart', 'pH', '#22c55e');
+    const stirChart = makeLineChart('stir-chart', 'Stirring PWM (0-1000)', '#0ea5e9');
+    let currentRange = loadRangePreference() || DEFAULT_RANGE;
+    activateRangeButton(currentRange);
+    const rawHistory = loadRawHistory();
+    const lastRenderByRange = {};
+    renderFromHistory(true);
+
+    function makeLineChart(canvasId, label, color) {
+      const ctx = document.getElementById(canvasId).getContext('2d');
+      return new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label,
+            data: [],
+            borderColor: color,
+            backgroundColor: hexToRgba(color, 0.12),
+            tension: 0.2
+          }]
+        },
+        options: {
+          responsive: true,
+          animation: false,
+          scales: {
+            x: {
+              ticks: {
+                maxTicksLimit: 5,
+                autoSkip: true,
+                maxRotation: 0
+              }
+            },
+            y: { beginAtZero: false }
+          },
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+    }
+
+    function hexToRgba(hex, alpha) {
+      const val = hex.replace('#', '');
+      const bigint = parseInt(val, 16);
+      const r = (bigint >> 16) & 255;
+      const g = (bigint >> 8) & 255;
+      const b = bigint & 255;
+      return `rgba(${r},${g},${b},${alpha})`;
+    }
+
+    function loadRangePreference() {
+      if (typeof localStorage === 'undefined') return null;
+      return localStorage.getItem('bioreactorRange');
+    }
+
+    function saveRangePreference(range) {
+      if (typeof localStorage === 'undefined') return;
+      localStorage.setItem('bioreactorRange', range);
+    }
+
+    function loadRawHistory() {
+      if (typeof localStorage === 'undefined') return { points: [] };
+      try {
+        const raw = localStorage.getItem(RAW_HISTORY_KEY);
+        if (!raw) return { points: [] };
+        const parsed = JSON.parse(raw);
+        parsed.points = parsed.points || [];
+        return parsed;
+      } catch (err) {
+        console.warn('Unable to load history', err);
+        return { points: [] };
+      }
+    }
+
+    function persistRawHistory() {
+      if (typeof localStorage === 'undefined') return;
+      try {
+        localStorage.setItem(RAW_HISTORY_KEY, JSON.stringify(rawHistory));
+      } catch (err) {
+        console.warn('Unable to persist raw history', err);
+      }
+    }
+
+    function renderFromHistory(force = false) {
+      if (!force) {
+        const config = RANGE_CONFIG[currentRange] || RANGE_CONFIG['5m'];
+        const now = Date.now();
+        const last = lastRenderByRange[currentRange] || 0;
+        if (now - last < (config.updateMs || 1000)) return;
+        lastRenderByRange[currentRange] = now;
+      } else {
+        lastRenderByRange[currentRange] = Date.now();
+      }
+      const filtered = filterHistoryByRange(currentRange);
+      const labels = filtered.map(point => new Date(point.ts).toLocaleTimeString());
+
+      updateChart(tempChart, labels, filtered.map(point => point.temperature));
+      updateChart(phChart, labels, filtered.map(point => point.ph));
+      updateChart(stirChart, labels, filtered.map(point => point.stirring_pwm));
+
+      const lastPoint = filtered[filtered.length - 1];
+      if (lastPoint) {
+        const timeLabel = new Date(lastPoint.ts).toLocaleTimeString();
+        if (typeof lastPoint.temperature !== 'undefined') updateReading('temperature', lastPoint.temperature, ' °C', timeLabel);
+        if (typeof lastPoint.ph !== 'undefined') updateReading('ph', lastPoint.ph, ' pH', timeLabel);
+        if (typeof lastPoint.stirring_pwm !== 'undefined') updateReading('stirring_pwm', lastPoint.stirring_pwm, ' rpm', timeLabel);
+      // let last60 = filterHistoryByRange("1m");
+      // const labels60 = last60.map(p => new Date(p.ts).toLocaleTimeString());
+      // updateChart(oneMinChart, labels60, last60.map(p => p.temperature));
+      }
+    }
+
+    function updateChart(chart, labels, data) {
+      chart.data.labels = labels;
+      chart.data.datasets[0].data = data;
+      chart.update();
+    }
+
+    function pruneHistory(points) {
+      const now = Date.now();
+      const limitMs = 1000 * 60 * 60 * 24 * 7; // keep one week
+      while (points.length && now - points[0].ts > limitMs) {
+        points.shift();
+      }
+    }
+
+    function filterHistoryByRange(range) {
+      const config = RANGE_CONFIG[range] || RANGE_CONFIG['5m'];
+      const basePoints = config.windowMs === Infinity
+        ? [...rawHistory.points]
+        : rawHistory.points.filter(point => point.ts >= Date.now() - config.windowMs);
+      const bucketMs = config.windowMs === Infinity
+        ? (config.bucketMs || 5 * 60 * 1000)
+        : Math.max(1000, Math.round((config.windowMs / MAX_POINTS) / 1000) * 1000);
+      return bucketizePoints(basePoints, bucketMs);
+    }
+
+    function bucketizePoints(points, bucketMs) {
+      if (!points.length || bucketMs <= 1000) return points;
+      const buckets = new Map();
+      points.forEach(point => {
+        const bucketKey = Math.floor(point.ts / bucketMs) * bucketMs;
+        let bucket = buckets.get(bucketKey);
+        if (!bucket) {
+          bucket = { ts: bucketKey, counts: { temperature: 0, ph: 0, stirring_pwm: 0 } };
+          buckets.set(bucketKey, bucket);
+        }
+        if (typeof point.temperature !== 'undefined') {
+          bucket.temperature = (bucket.temperature || 0) + point.temperature;
+          bucket.counts.temperature += 1;
+        }
+        if (typeof point.ph !== 'undefined') {
+          bucket.ph = (bucket.ph || 0) + point.ph;
+          bucket.counts.ph += 1;
+        }
+        if (typeof point.stirring_pwm !== 'undefined') {
+          bucket.stirring_pwm = (bucket.stirring_pwm || 0) + point.stirring_pwm;
+          bucket.counts.stirring_pwm += 1;
+        }
+      });
+
+      return Array.from(buckets.values())
+        .sort((a, b) => a.ts - b.ts)
+        .map(bucket => ({
+          ts: bucket.ts,
+          temperature: bucket.counts.temperature ? +(bucket.temperature / bucket.counts.temperature).toFixed(3) : undefined,
+          ph: bucket.counts.ph ? +(bucket.ph / bucket.counts.ph).toFixed(3) : undefined,
+          stirring_pwm: bucket.counts.stirring_pwm ? +(bucket.stirring_pwm / bucket.counts.stirring_pwm).toFixed(3) : undefined
+        }));
+    }
+
+    function activateRangeButton(range) {
+      document.querySelectorAll('.chart-toolbar button').forEach((button) => {
+        button.classList.toggle('active', button.dataset.range === range);
+      });
+    }
+
+    const wsUrl = `ws://${window.location.hostname}:${window.location.port || 3000}`;
+    const client = mqtt.connect(wsUrl, { reconnectPeriod: 2000 });
+
+    client.on('connect', () => {
+      statusEl.textContent = 'Connected to MQTT broker';
+      statusDot.classList.add('ok');
+      submitBtn.disabled = false;
+      addConsoleEntry('others', 'Connected to MQTT broker');
+      client.subscribe([
+        'bioreactor/temperature',
+        'bioreactor/ph',
+        'bioreactor/stirring_pwm',
+        'bioreactor/target/#',
+        'bioreactor/telemetry',
+        'bioreactor/anomaly/status',
+        'bioreactor/target/state'
+      ]);
+    });
+
+    client.on('reconnect', () => {
+      statusEl.textContent = 'Reconnecting…';
+      statusDot.classList.remove('ok');
+      submitBtn.disabled = true;
+      addConsoleEntry('others', 'Attempting to reconnect…');
+    });
+
+    client.on('offline', () => {
+      statusEl.textContent = 'Offline';
+      statusDot.classList.remove('ok');
+      submitBtn.disabled = true;
+      addConsoleEntry('others', 'MQTT connection offline.');
+    });
+
+    client.on('message', (topic, message) => {
+      const text = message.toString();
+      let payload;
+      try {
+        payload = JSON.parse(text);
+      } catch (err) {
+        payload = { value: parseFloat(text), ts: Date.now() };
+      }
+
+      const ts = payload.ts || payload.timestamp || Date.now();
+      const label = new Date(ts).toLocaleTimeString();
+
+      const updateReadingWithLabel = (key, value, suffix = '') => updateReading(key, value, suffix, label);
+
+      switch (topic) {
+        case 'bioreactor/temperature':
+          updateReadingWithLabel('temperature', payload.value ?? payload.temperature, ' °C');
+          appendPoint(tempChart, label, payload.value ?? payload.temperature);
+          break;
+        case 'bioreactor/ph':
+          updateReadingWithLabel('ph', payload.value ?? payload.ph, ' pH');
+          appendPoint(phChart, label, payload.value ?? payload.ph);
+          break;
+        case 'bioreactor/stirring_pwm':
+          updateReadingWithLabel('stirring_pwm', payload.value ?? payload.stirring, ' rpm');
+          appendPoint(stirChart, label, payload.value ?? payload.stirring);
+          break;
+        case 'bioreactor/anomaly/status':
+          handleStatusMessage(payload);
+          break;
+        case 'bioreactor/target/state':
+          applySetpointState(payload);
+          break;
+        default:
+          if (topic.startsWith('bioreactor/target/')) {
+            const parts = topic.split('/');
+            const name = parts[2];
+            const isEcho = parts[3] === 'echo';
+            const numericValue = parseFloat(payload.value ?? payload[name] ?? payload.target ?? NaN);
+            if (!Number.isNaN(numericValue)) {
+              updateSetpointDisplay(name, numericValue);
+              if (isEcho) {
+                addConsoleEntry('targets', `Set ${formatMetricName(name)} target to ${formatValue(name, numericValue)}`);
+              }
+            }
+            lastTargets.textContent = `Latest target from ${name}: ${text}`;
+          }
+      }
+    });
+
+    function appendPoint(chart, label, value) {
+      if (value === undefined || value === null || Number.isNaN(value)) return;
+      const timestamp = Date.now();
+      let lastPoint = rawHistory.points[rawHistory.points.length - 1];
+      if (!lastPoint || timestamp - lastPoint.ts > 500) {
+        lastPoint = { ts: timestamp };
+        rawHistory.points.push(lastPoint);
+      }
+      if (chart === tempChart) lastPoint.temperature = value;
+      if (chart === phChart) lastPoint.ph = value;
+      if (chart === stirChart) lastPoint.stirring_pwm = value;
+      pruneHistory(rawHistory.points);
+      persistRawHistory();
+      renderFromHistory();
+    }
+
+    document.getElementById('targets-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const temperature = parseFloat(document.getElementById('temp-target').value);
+      const ph = parseFloat(document.getElementById('ph-target').value);
+      const stirring = parseFloat(document.getElementById('stir-target').value);
+      const ts = Date.now();
+
+      publishTarget('temperature', temperature, ts);
+      publishTarget('ph', ph, ts);
+      publishTarget('stirring_pwm', stirring, ts);
+
+      lastTargets.textContent = `Published targets @ ${new Date(ts).toLocaleTimeString()}`;
+    });
+
+    function publishTarget(name, value, ts) {
+      if (Number.isNaN(value)) return;
+      const topic = `bioreactor/target/${name}`;
+      const payload = JSON.stringify({ value, ts });
+      client.publish(topic, payload);
+      updateSetpointDisplay(name, value);
+    }
+
+    function handleStatusMessage(payload) {
+      setMetricSeverity('temperature', payload?.temperature?.level ?? 0);
+      setMetricSeverity('ph', payload?.ph?.level ?? 0);
+      setMetricSeverity('stirring_pwm', payload?.stirring_pwm?.level ?? 0);
+      const confirmed = Boolean(payload?.confirmed);
+      const anomalies = payload?.anomalies || [];
+      const signature = `${confirmed}-${anomalies.join('|')}`;
+      const hasAlert = confirmed || anomalies.length > 0;
+      if (confirmed) {
+        const details = buildDeviationText(payload);
+        const text = details.length ? `Anomaly confirmed: ${details.join('; ')}` : 'Anomaly confirmed.';
+        alertMessage.textContent = text;
+        alertBanner.classList.remove('hidden');
+      } else if (anomalies.length) {
+        const details = buildDeviationText(payload);
+        alertMessage.textContent = details.length
+          ? `Warning: ${details.join('; ')}`
+          : `Warning: ${anomalies.join(', ')}`;
+        alertBanner.classList.remove('hidden');
+      } else {
+        alertBanner.classList.add('hidden');
+      }
+      if (hasAlert && signature !== lastAlertSignature) {
+        const message = buildDeviationText(payload).join('; ') || payload?.message || anomalies.join(', ') || 'Check system';
+        addConsoleEntry('alerts', `Warning: ${message}`);
+        lastAlertSignature = signature;
+      }
+      if (!hasAlert) {
+        lastAlertSignature = '';
+      }
+    }
+
+    function setMetricSeverity(key, level) {
+      const el = metricCards[key];
+      if (!el) return;
+      el.classList.remove('alert-caution', 'alert-critical');
+      if (level >= 2) {
+        el.classList.add('alert-critical');
+      } else if (level === 1) {
+        el.classList.add('alert-caution');
+      }
+    }
+
+    function buildDeviationText(payload) {
+      const entries = [];
+      if (payload?.temperature) {
+        entries.push(formatDeviation('temperature', payload.temperature.delta));
+      }
+      if (payload?.ph) {
+        entries.push(formatDeviation('ph', payload.ph.delta));
+      }
+      if (payload?.stirring_pwm) {
+        entries.push(formatDeviation('stirring_pwm', payload.stirring_pwm.delta));
+      }
+      return entries.filter(Boolean);
+    }
+
+    function formatDeviation(key, delta) {
+      if (delta === undefined || delta === null || Number.isNaN(delta)) return null;
+      const formatted = delta > 0 ? `+${delta.toFixed(2)}` : delta.toFixed(2);
+      if (key === 'temperature') return `Temperature (Δ=${formatted} °C)`;
+      if (key === 'ph') return `pH (Δ=${formatted})`;
+      if (key === 'stirring_pwm') return `Stirring (Δ=${formatted} rpm)`;
+      return `${key} (Δ=${formatted})`;
+    }
+
+    function updateReading(key, value, suffix = '', labelText) {
+      if (value === undefined || value === null || Number.isNaN(value)) return;
+      readings[key].el.textContent = `${value}${suffix}`;
+      readings[key].time.textContent = labelText || new Date().toLocaleTimeString();
+    }
+
+    function updateSetpointDisplay(name, value) {
+      if (!(name in currentSetpoints)) return;
+      const numeric = Number(value);
+      const finalValue = Number.isNaN(numeric) ? value : numeric;
+      currentSetpoints[name] = finalValue;
+      const el = targetEls[name];
+      if (!el) return;
+      el.textContent = formatValue(name, finalValue);
+    }
+
+    function formatValue(name, value) {
+      if (value === undefined || value === null || Number.isNaN(value)) return '--';
+      if (name === 'temperature') return `${value} °C`;
+      if (name === 'ph') return `${value} pH`;
+      if (name === 'stirring_pwm') return `${value} rpm`;
+      return `${value}`;
+    }
+
+    function formatMetricName(key) {
+      switch (key) {
+        case 'temperature': return 'Temperature';
+        case 'ph': return 'pH';
+        case 'stirring_pwm': return 'Stirring PWM';
+        default: return key;
+      }
+    }
+
+    function addConsoleEntry(type, text) {
+      consoleEntries.push({ type, text, ts: Date.now() });
+      if (consoleEntries.length > 200) consoleEntries.shift();
+      renderConsole();
+    }
+
+    function renderConsole() {
+      consoleList.innerHTML = '';
+      const filtered = consoleEntries.filter(entry => consoleFilters[entry.type]);
+      const recent = filtered.slice(-50);
+      recent.forEach(entry => {
+        const li = document.createElement('li');
+        li.className = 'console-entry';
+        const timeEl = document.createElement('time');
+        timeEl.textContent = new Date(entry.ts).toLocaleTimeString();
+        li.appendChild(timeEl);
+        const textNode = document.createTextNode(entry.text);
+        li.appendChild(textNode);
+        consoleList.appendChild(li);
+      });
+      consoleList.scrollTop = consoleList.scrollHeight;
+    }
+
+    function applySetpointState(state) {
+      if (!state) return;
+      const mapping = {
+        temperature_C: 'temperature',
+        pH: 'ph',
+        rpm: 'stirring_pwm'
+      };
+      Object.entries(mapping).forEach(([key, targetKey]) => {
+        if (typeof state[key] !== 'undefined') {
+          updateSetpointDisplay(targetKey, state[key]);
+          const inputId =
+            targetKey === 'temperature' ? 'temp-target'
+            : targetKey === 'ph' ? 'ph-target'
+            : 'stir-target';
+          const inputEl = document.getElementById(inputId);
+          if (inputEl) inputEl.value = state[key];
+        }
+      });
+      addConsoleEntry('targets', 'Restored targets from broker.');
+    }
+  </script>
+</body>
+</html>
