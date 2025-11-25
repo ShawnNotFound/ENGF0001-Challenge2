@@ -39,12 +39,6 @@ def parse_args():
         help="Number of samples to collect before stopping.",
     )
     parser.add_argument(
-        "--max-seconds",
-        type=int,
-        default=12000,
-        help="Safety timeout to stop collecting if not enough samples were received.",
-    )
-    parser.add_argument(
         "--output",
         default=None,
         help="CSV path. Defaults to normal_data.csv for nofaults, "
@@ -110,7 +104,8 @@ def main():
     args = parse_args()
     output = args.output
     if not output:
-        output = "normal_data.csv" if args.scenario == "nofaults" else f"{args.scenario}_data.csv"
+        # output = "normal_data.csv" if args.scenario == "nofaults" else f"{args.scenario}_data.csv"
+        output = f"final_data.csv"
     output_path = Path(output)
 
     topic = f"bioreactor_sim/{args.scenario}/telemetry/summary"
@@ -127,6 +122,9 @@ def main():
         try:
             data = json.loads(msg.payload.decode())
             records.append(build_record(data, args.scenario))
+            # Flush periodically for long runs
+            if len(records) % 100 == 0:
+                pd.DataFrame(records).to_csv(output_path, index=False)
             if len(records) % 50 == 0:
                 print(f"Collected {len(records)} samples...")
             if len(records) >= args.samples:
@@ -139,10 +137,9 @@ def main():
     client.on_message = on_message
     client.connect(args.host, args.port, keepalive=60)
 
-    start = time.time()
     client.loop_start()
     try:
-        while len(records) < args.samples and (time.time() - start) < args.max_seconds:
+        while len(records) < args.samples:
             time.sleep(0.5)
         if client.is_connected():
             client.disconnect()
