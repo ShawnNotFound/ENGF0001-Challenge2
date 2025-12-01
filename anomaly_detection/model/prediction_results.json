@@ -1,0 +1,57 @@
+{
+  "model_type": "hybrid_ensemble",
+  "results": {
+    "Therm Voltage Bias": {
+      "model": "LSTM",
+      "f1": 0.5751398880895284,
+      "precision": 0.4546603475513428,
+      "recall": 0.7824904839586732,
+      "accuracy": 0.7874,
+      "confusion_matrix": {
+        "TP": 2878,
+        "FP": 3452,
+        "TN": 12870,
+        "FN": 800
+      }
+    },
+    "pH Offset Bias": {
+      "model": "RF",
+      "f1": 0.9615032080659945,
+      "precision": 0.9419335528284944,
+      "recall": 0.9819032761310452,
+      "accuracy": 0.9874,
+      "confusion_matrix": {
+        "TP": 3147,
+        "FP": 194,
+        "TN": 16601,
+        "FN": 58
+      }
+    },
+    "Heater Power Loss": {
+      "model": "RF",
+      "f1": 0.5508691206543967,
+      "precision": 0.46413956493646347,
+      "recall": 0.6774599182646966,
+      "accuracy": 0.8243,
+      "confusion_matrix": {
+        "TP": 2155,
+        "FP": 2488,
+        "TN": 14331,
+        "FN": 1026
+      }
+    },
+    "ANY FAULT": {
+      "model": "Hybrid",
+      "f1": 0.7739147909967846,
+      "precision": 0.6782317717506164,
+      "recall": 0.9010294805802527,
+      "accuracy": 0.775,
+      "confusion_matrix": {
+        "TP": 7702,
+        "FP": 3654,
+        "TN": 7798,
+        "FN": 846
+      }
+    }
+  }
+}
