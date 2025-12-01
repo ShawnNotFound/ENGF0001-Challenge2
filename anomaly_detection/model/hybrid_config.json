@@ -1,0 +1,21 @@
+{
+  "model_type": "hybrid_ensemble",
+  "therm_model": "lstm",
+  "ph_model": "rf",
+  "heater_model": "rf",
+  "lstm_checkpoint": "lstm_therm_detector.pt",
+  "rf_checkpoint": "rf_detectors.pkl",
+  "lstm_features": [
+    "\u0394T",
+    "\u0394pH",
+    "\u0394RPM",
+    "T_mean",
+    "pH_mean",
+    "RPM_mean",
+    "set_T",
+    "set_pH",
+    "set_RPM"
+  ],
+  "window": 60,
+  "stride": 5
+}
