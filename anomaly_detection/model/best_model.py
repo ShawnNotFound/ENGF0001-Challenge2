@@ -412,3 +412,71 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+
+"""
+======================================================================
+HYBRID ENSEMBLE MODEL
+======================================================================
+
+Strategy:
+  • LSTM for Therm Voltage Bias
+  • Random Forest for pH Offset Bias
+  • Random Forest for Heater Power Loss
+
+Loading data...
+Total samples: 100000
+Train samples: 80000
+Val samples: 20000
+
+======================================================================
+TRAINING LSTM FOR THERM VOLTAGE BIAS
+======================================================================
+Train sequences: 15989
+Val sequences: 3989
+Epoch 05 | Train loss=0.3848 | Therm F1=0.894
+Epoch 10 | Train loss=0.3083 | Therm F1=0.900
+Epoch 15 | Train loss=0.2933 | Therm F1=0.828
+Epoch 20 | Train loss=0.2401 | Therm F1=0.917
+Epoch 25 | Train loss=0.2075 | Therm F1=0.917
+
+======================================================================
+TRAINING RANDOM FOREST MODELS
+======================================================================
+
+Training RF for heater_power_loss...
+
+Training RF for ph_offset_bias...
+
+======================================================================
+HYBRID ENSEMBLE EVALUATION
+======================================================================
+
+Therm Voltage Bias (LSTM):
+  F1: 0.5751 | Precision: 0.4547 | Recall: 0.7825
+  TP:  2878 | FP:  3452 | TN: 12870 | FN:   800
+
+pH Offset Bias (RF):
+  F1: 0.9615 | Precision: 0.9419 | Recall: 0.9819
+  TP:  3147 | FP:   194 | TN: 16601 | FN:    58
+
+Heater Power Loss (RF):
+  F1: 0.5509 | Precision: 0.4641 | Recall: 0.6775
+  TP:  2155 | FP:  2488 | TN: 14331 | FN:  1026
+
+ANY FAULT (Hybrid):
+  F1: 0.7739 | Precision: 0.6782 | Recall: 0.9010
+  TP:  7702 | FP:  3654 | TN:  7798 | FN:   846
+
+======================================================================
+SAVING MODELS
+======================================================================
+✅ Saved LSTM model to lstm_therm_detector.pt
+✅ Saved RF models to rf_detectors.pkl
+✅ Saved hybrid config to hybrid_config.json
+
+======================================================================
+✅ Training complete!
+======================================================================
+"""
